@@ -1,18 +1,15 @@
-[![](https://i.imgur.com/E8Kj69Y.png)](https://kernc.github.io/backtesting.py/)
+
 
 # IMC Prosperity
-==============
 
-
-# Installation
-------------
-Anaconda (See Documentation [here](https://docs.anaconda.com/anaconda/install/)):
+## Installation
+### Anaconda (See Documentation [here](https://docs.anaconda.com/anaconda/install/)):
 
 ```bash
 conda create --name <env> --file requirements.txt
 ```
 
-VENV Virtual Environment (See Documentation [here](https://docs.python.org/3/library/venv.html))
+### VENV Virtual Environment (See Documentation [here](https://docs.python.org/3/library/venv.html))
 ```bash
 python3 -m venv env
 source env/bin/activate
@@ -123,34 +120,3 @@ dtype: object
 ```
 [![plot of trading simulation](https://i.imgur.com/xRFNHfg.png)](https://kernc.github.io/backtesting.py/#example)
 
-Find more usage examples in the [documentation].
-
-
-Features
---------
-* Simple, well-documented API
-* Blazing fast execution
-* Built-in optimizer
-* Library of composable base strategies and utilities
-* Indicator-library-agnostic
-* Supports _any_ financial instrument with candlestick data
-* Detailed results
-* Interactive visualizations
-
-![xkcd.com/1570](https://imgs.xkcd.com/comics/engineer_syllogism.png)
-
-
-Bugs
-----
-Before reporting bugs or posting to the
-[discussion board](https://github.com/kernc/backtesting.py/discussions),
-please read [contributing guidelines](CONTRIBUTING.md), particularly the section
-about crafting useful bug reports and ```` ``` ````-fencing your code. We thank you!
-
-
-Alternatives
-------------
-See [alternatives.md] for a list of alternative Python
-backtesting frameworks and related packages.
-
-[alternatives.md]: https://github.com/kernc/backtesting.py/blob/master/doc/alternatives.md
