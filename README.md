@@ -6,7 +6,7 @@
 ### Anaconda (See Documentation [here](https://docs.anaconda.com/anaconda/install/)):
 
 ```bash
-conda create --name <env> --file requirements.txt
+conda create --name <env> --file requirements_CONDA.txt
 ```
 
 ### VENV Virtual Environment (See Documentation [here](https://docs.python.org/3/library/venv.html))
