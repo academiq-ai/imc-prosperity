@@ -1,9 +1,8 @@
-if __name__ == '__main__':
+if __name__ == "__main__":
     from backtesting import Backtest, Strategy
     from backtesting.lib import crossover
 
     from backtesting.test import SMA, GOOG
-
 
     class SmaCross(Strategy):
         def init(self):
@@ -17,8 +16,6 @@ if __name__ == '__main__':
             elif crossover(self.ma2, self.ma1):
                 self.sell()
 
-
-    bt = Backtest(GOOG, SmaCross, commission=.002,
-                exclusive_orders=True)
+    bt = Backtest(GOOG, SmaCross, commission=0.000, exclusive_orders=True)
     stats = bt.run()
     bt.plot()

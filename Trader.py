@@ -1,9 +1,7 @@
 from typing import Dict, List
 from datamodel import OrderDepth, TradingState, Order
 
-
 class Trader:
-
     def run(self, state: TradingState) -> Dict[str, List[Order]]:
         """
         Only method required. It takes all buy and sell orders for all symbols as an input,
@@ -16,7 +14,7 @@ class Trader:
         for product in state.order_depths.keys():
 
             # Check if the current product is the 'PEARLS' product, only then run the order logic
-            if product == 'PEARLS':
+            if product == "PEARLS":
 
                 # Retrieve the Order Depth containing all the market BUY and SELL orders for PEARLS
                 order_depth: OrderDepth = state.order_depths[product]
