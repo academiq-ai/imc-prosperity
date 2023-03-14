@@ -110,15 +110,21 @@ def generateTradingState(row, market_bid_orders, market_ask_orders):
     return state
 
 
-def update_our_orders(result, our_bid_orders, our_ask_orders):
+def update_our_orders(result, market_bid_orders, market_ask_orders, our_bid_orders, our_ask_orders):
     for product, orders in result.items():
         for order in orders:
-            if order.price in our_bid_orders:
+            if order.price in our_bid_orders: # add to existing bid order
                 our_bid_orders[order.price][0] += order.quantity
-            elif order.price in our_ask_orders:
+            elif order.price in our_ask_orders: # add to existing ask order
                 our_ask_orders[order.price][0] += order.quantity
-            else:
-                our_orders[order.price] = [order.quantity, 0]
+            else: # new order
+                if order.quantity > 0: # new bid position
+                    our_bid_orders[order.price] = [order.quantity, 0] if order.price not in market_bid_orders \
+                    else [[order.quantity], [market_bid_orders[order.price]]]
+                elif order.quantity < 0: # new ask position
+                    our_ask_orders[order.price] = [order.quantity, 0] if order.price not in market_ask_orders \
+                    else [[order.quantity], [market_ask_orders[order.price]]]
+                #our_orders[order.price] = [order.quantity, 0]
 
 
 def match_orders(market_bid_orders, market_ask_orders, our_bid_orders, our_ask_orders):
