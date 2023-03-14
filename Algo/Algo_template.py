@@ -30,7 +30,7 @@ class Trader:
 
     def run(self, state: TradingState) -> Dict[str, List[Order]]:
         #-----Data update start-----
-        for product in self.PROD_LIST:
+        for product in state.order_depths.keys():
             self.result[product] = []
         self.position = state.position
         self.order_depths = state.order_depths
