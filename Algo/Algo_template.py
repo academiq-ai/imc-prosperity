@@ -9,8 +9,6 @@ class Trader:
     POS_LIMIT: Dict[str, int] = {} # Dict: {product_name -> pos_limit} NOTE: need to manually update dict of product limits
     PROD_LIST = ("PEARLS", "BANANAS") # Set: product_names NOTE: need to manually update list of products
     MAX_LOT_SIZE = 10
-    PATTERN_TRACKING_INTERVAL = 5
-    PATTERN_MAX_INDEX = 2 ** PATTERN_TRACKING_INTERVAL - 1
 
     def __init__(self) -> None:
         self.result = {} # tracks order placed in each iteration, {product_name -> List(Order)} NOTE: reassigns to empty dict every iteration
@@ -21,18 +19,7 @@ class Trader:
         self.position = {} # tracks position of each product, {product_name -> position}
         self.order_depths = {}
 
-        #variables for godric_pattern_tracking()
-        self.pattern_net_return_and_ct = {} # first row is net return % of a pattern; second row is number of appearances of a pattern
-        self.start_tracking = {}
-        self.price_tracked_ct = {}
-        self.pattern_interval_ct = {}
-        self.pattern = {}
-        self.prev_price = {}
-        self.pattern_ct = {}
-        self.up_frq = {}
-        self.down_frq = {}
-
-        for product in self.PROD_LIST: # initialize variables
+        for product in self.PROD_LIST: # initialize 0/empty list
             self.result[product] = []
             self.hist_prices[product] = []
             self.price[product] = 0
@@ -40,104 +27,24 @@ class Trader:
             self.vol = 0
             self.position[product] = 0
             self.order_depths[product] = OrderDepth
-            self.pattern_net_return_and_ct[product] = np.zeros((2,2**self.PATTERN_TRACKING_INTERVAL))
-            self.start_tracking[product] = False
-            self.price_tracked_ct[product] = 0
-            self.pattern_interval_ct[product] = 0
-            self.pattern[product] = 0
-            self.prev_price[product] = 0
-            self.pattern_ct[product] = 0
-            self.up_frq[product] = np.zeros(2)
-            self.down_frq[product] = np.zeros(2)
 
     def run(self, state: TradingState) -> Dict[str, List[Order]]:
         #-----Data update start-----
-        for product in state.order_depths.keys():
+        for product in self.PROD_LIST:
             self.result[product] = []
         self.position = state.position
         self.order_depths = state.order_depths
         for product in state.order_depths.keys():
-            self.__update_vol_and_price_weighted_by_vol(self, state, product) # update price of [product
-            self.__pattern_tracking(product)
-            #update best ask and bid price
+            self.__update_vol_and_price_weighted_by_vol(self, state, product) # update price of [product]
         #-----Data update end
         #-----Algo start-----
-        for product in state.order_depths.keys():
-            if self.pattern_ct[product] > 1000:
-                exp_val = self.expected_val_of_pattern(product)
-                certainty = self.certainty_of_expected_val(self, product, exp_val)
-                if exp_val > 0:
-                    best_ask_price = self.get_best_ask(product)
-                    vol = self.get_max_bid_size(product)
-                    self.place_order(product, best_ask_price, abs(vol*certainty))
-                elif exp_val < 0:
-                    best_bid_price = self.get_best_bid(product)
-                    vol = self.get_max_ask_size(product)
-                    self.place_order(product, best_bid_price, -abs(vol*certainty))
+
         #-----Algo end
         return self.result
 
     #-----Algo methods start-----
     def write_methods_for_algo_computations_in_this_section(self):
         pass
-    def __pattern_tracking(self, product):
-        if self.start_tracking[product] == True and self.price_tracked_ct[product] >= (self.PATTERN_TRACKING_INTERVAL + 2):
-            if self.price != self.prev_price and self.prev_price != 0:
-                perc_change = ((self.price - self.prev_price) / self.prev_price) * 100
-                if self.price > self.prev_price:
-                    bit = 1
-                    self.up_frq[product] += perc_change, 1
-                else:
-                    bit = 0
-                    self.down_frq[product] += perc_change, 1
-                self.pattern[product] = self.pattern[product] << 1 | bit
-                self.pattern[product] = id = self.pattern[product] & self.PATTERN_MAX_INDEX
-                if id <= self.PATTERN_MAX_INDEX:
-                    self.pattern_net_return_and_ct[product][:,id] += perc_change, 1
-                    self.pattern_ct[product] += 1
-                self.prev_price = self.price
-        elif self.start_tracking[product] == True and self.price_tracked_ct[product] < (self.PATTERN_TRACKING_INTERVAL + 2):
-            if self.price != self.prev_price and self.prev_price != 0:
-                perc_change = ((self.price - self.prev_price) / self.prev_price) * 100
-                if self.price > self.prev_price:
-                    bit = 1
-                    self.up_frq[product] += perc_change, 1
-                else:
-                    bit = 0
-                    self.down_frq[product] += perc_change,1
-                self.pattern[product] = self.pattern[product] << 1 | bit
-                self.pattern[product] = self.pattern[product] & self.PATTERN_MAX_INDEX
-                self.price_tracked_ct[product] += 1
-                self.prev_price = self.price
-        elif self.start_tracking[product] == False and self.price[product] != 0: #ensure start tracking with non-zero number
-            self.start_tracking[product] = True
-            self.prev_price[product] = self.price[product]
-        
-    
-    """(func) expected_val_of_pattern(product)
-            Returns the expected percentage return"""
-    def expected_val_of_pattern(self, product):
-        if self.start_tracking[product] == True and self.price_tracked_ct[product] >= (self.PATTERN_TRACKING_INTERVAL + 2):
-            id = self.pattern[product]
-            net_return_perc = self.pattern_net_return_and_ct[product][0,id]
-            occurences = self.pattern_net_return_and_ct[product][1,id]
-            return net_return_perc / occurences if occurences > 0 else 0
-        else:
-            return 0 
-    def certainty_of_expected_val(self, product, exp_val):
-        id = self.pattern[product]
-        #exp_val = self.expected_val_of_pattern(product)
-        certainty_pattern_freq = self.pattern_net_return_and_ct[product][1,id] / self.pattern_ct[product] if self.pattern_ct[product] > 0 else 0
-        certainty_expVal_to_avgRet = 0
-        if exp_val > 0 and self.up_frq[product][1] > 0:
-            certainty_expVal_to_avgRet = exp_val / (self.up_frq[product][0] / self.up_frq[product][1])
-        elif exp_val < 0 and self.down_frq[product][1] > 0:
-            certainty_expVal_to_avgRet = exp_val / (self.down_frq[product][0] / self.down_frq[product][1])
-        if certainty_expVal_to_avgRet < 0:
-            certainty_expVal_to_avgRet = 0
-        elif certainty_expVal_to_avgRet > 1:
-            certainty_expVal_to_avgRet = 1
-        return certainty_expVal_to_avgRet * certainty_pattern_freq
     #-----Algo methods end
 
     #-----Basic methods start-----
