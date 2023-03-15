@@ -53,31 +53,36 @@ class Trader:
             self.down_frq[product] = np.zeros(2)
 
     def run(self, state: TradingState) -> Dict[str, List[Order]]:
-        #-----Data update start-----
-        for product in state.order_depths.keys():
-            self.result[product] = []
-        self.position = state.position
-        self.order_depths = state.order_depths
-        for product in state.order_depths.keys():
-            self.__update_vol_and_price_weighted_by_vol(self, state, product) # update price of [product
-            self.__update_mid_price(product)
-            self.__pattern_tracking(product)
-        #-----Data update end
-        #-----Algo start-----
-        for product in state.order_depths.keys():
-            if self.pattern_ct[product] > 1000:
-                exp_val = self.expected_val_of_pattern(product)
-                certainty = self.certainty_of_expected_val(self, product, exp_val)
-                if exp_val > 0:
-                    best_ask_price = self.get_best_ask(product)
-                    vol = self.get_max_bid_size(product)
-                    self.place_order(product, best_ask_price, abs(vol*certainty))
-                elif exp_val < 0:
-                    best_bid_price = self.get_best_bid(product)
-                    vol = self.get_max_ask_size(product)
-                    self.place_order(product, best_bid_price, -abs(vol*certainty))
-        #-----Algo end
-        return self.result
+        try:
+            #-----Data update start-----
+            for product in state.order_depths.keys():
+                self.result[product] = []
+            self.position = state.position
+            self.order_depths = state.order_depths
+            for product in state.order_depths.keys():
+                self.__update_vol_and_price_weighted_by_vol(self, state, product) # update price of [product
+                self.__update_mid_price(product)
+                self.__pattern_tracking(product)
+            #-----Data update end
+            #-----Algo start-----
+            for product in state.order_depths.keys():
+                if self.pattern_ct[product] > 1000:
+                    exp_val = self.expected_val_of_pattern(product)
+                    certainty = self.certainty_of_expected_val(self, product, exp_val)
+                    if exp_val > 0:
+                        best_ask_price = self.get_best_ask(product)
+                        vol = self.get_max_bid_size(product)
+                        self.place_order(product, best_ask_price, abs(vol*certainty))
+                    elif exp_val < 0:
+                        best_bid_price = self.get_best_bid(product)
+                        vol = self.get_max_ask_size(product)
+                        self.place_order(product, best_bid_price, -abs(vol*certainty))
+            #-----Algo end
+            return self.result
+        except Exception:
+            self.result = {}
+            return self.result
+
 
     #-----Algo methods start-----
     def write_methods_for_algo_computations_in_this_section(self):

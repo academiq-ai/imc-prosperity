@@ -33,19 +33,23 @@ class Trader:
             self.order_depths[product] = OrderDepth
 
     def run(self, state: TradingState) -> Dict[str, List[Order]]:
-        #-----Data update start-----
-        for product in state.order_depths.keys():
-            self.result[product] = []
-        self.position = state.position
-        self.order_depths = state.order_depths
-        for product in state.order_depths.keys():
-            self.__update_vol_and_price_weighted_by_vol(self, state, product) # update price of [product]
-            self.__update_mid_price(product)
-        #-----Data update end
-        #-----Algo start-----
+        try:
+            #-----Data update start-----
+            for product in state.order_depths.keys():
+                self.result[product] = []
+            self.position = state.position
+            self.order_depths = state.order_depths
+            for product in state.order_depths.keys():
+                self.__update_vol_and_price_weighted_by_vol(self, state, product) # update price of [product]
+                self.__update_mid_price(product)
+            #-----Data update end
+            #-----Algo start-----
 
-        #-----Algo end
-        return self.result
+            #-----Algo end
+            return self.result
+        except Exception:
+            self.result = {}
+            return self.result
 
     #-----Algo methods start-----
     def write_methods_for_algo_computations_in_this_section(self):
