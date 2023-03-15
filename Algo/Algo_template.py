@@ -14,6 +14,8 @@ class Trader:
         self.result = {} # tracks order placed in each iteration, {product_name -> List(Order)} NOTE: reassigns to empty dict every iteration
         self.hist_prices = {} # tracks all historical market prices of each product, {product_name -> List(market_price)}
         self.price = {} # tracks current market price of each product, {product_name -> market_price}
+        self.mid_price = {} # tracks current market mid price of each product, {product_name -> mid_price}
+        self.hist_mid_prices = {} # tracks all historical mid_prices of each product, {product_name -> List(mid_price)} 
         self.hist_vol = {} # tracks all historical volume of each product, {product_name -> List(volume)}
         self.vol = {} # tracks current volume of each product, {product_name -> volume}
         self.position = {} # tracks position of each product, {product_name -> position}
@@ -23,6 +25,8 @@ class Trader:
             self.result[product] = []
             self.hist_prices[product] = []
             self.price[product] = 0
+            self.mid_price[product] = 0
+            self.hist_mid_prices[product] = []
             self.hist_vol = []
             self.vol = 0
             self.position[product] = 0
@@ -36,6 +40,7 @@ class Trader:
         self.order_depths = state.order_depths
         for product in state.order_depths.keys():
             self.__update_vol_and_price_weighted_by_vol(self, state, product) # update price of [product]
+            self.__update_mid_price(product)
         #-----Data update end
         #-----Algo start-----
 
@@ -49,7 +54,7 @@ class Trader:
 
     #-----Basic methods start-----
     def place_order(self, product, price, quantity): # NOTE: price and quantity do not need to be integers; this method will take care of it
-        if product in self.PROD_LIST and int(round(quantity)) != 0:
+        if product in self.PROD_LIST and int(round(quantity)) != 0 and int(round(price)) != 0:
             self.result[product].append(Order(product, int(round(price)), int(round(quantity))))
     
     def get_max_bid_size(self, product):
@@ -70,7 +75,7 @@ class Trader:
     
     def get_best_bid(self, product):
         bids = self.order_depths[product].buy_orders
-        best_bid = 99999
+        best_bid = 0
         if len(bids) > 0:
             best_bid = max(bids.keys())
         return best_bid
@@ -91,8 +96,14 @@ class Trader:
     def get_price_mean(self, product):
         return st.mean(self.hist_prices[product])
     
-    def get_vol_std(self, product):
+    def get_price_std(self, product):
         return st.stdev(self.hist_prices[product])
+    
+    def get_mid_price_mean(self, product):
+        return st.mean(self.hist_mid_prices[product])
+    
+    def get_mid_price_std(self, product):
+        return st.stdev(self.hist_mid_prices[product])
     #-----Basic methods end
 
     #-----Helper methods start (you should not need to call methods below)-----
@@ -112,4 +123,11 @@ class Trader:
         self.hist_prices[product].append(self.price[product])
         self.vol[product] = t_vol
         self.hist_vol[product].append(t_vol)
+
+    def __update_mid_price(self, product) -> None:
+        product_bids = self.order_depths[product].buy_orders
+        product_asks = self.order_depths[product].sell_orders
+        if len(product_bids) > 0 and len(product_asks) > 0:
+            self.mid_price[product] = (max(product_bids.keys()) + min(product_asks.keys())) / 2
+            self.hist_mid_prices[product].append(self.mid_price)
     #-----Helper methods end
