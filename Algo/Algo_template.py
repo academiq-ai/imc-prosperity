@@ -116,7 +116,7 @@ class Trader:
 
     #-----Helper methods start (you should not need to call methods below)-----
     def __update_postion(self, state: TradingState):
-        for product,pos in state.position:
+        for product,pos in state.position.items():
             self.position[product] = pos
 
     def __update_vol_and_price_weighted_by_vol(self, state: TradingState, product) -> None:
