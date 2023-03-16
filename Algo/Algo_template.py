@@ -11,6 +11,7 @@ class Trader:
     MAX_LOT_SIZE = 10
 
     def __init__(self) -> None:
+        self.state = TradingState
         self.result = {} # tracks order placed in each iteration, {product_name -> List(Order)} NOTE: reassigns to empty dict every iteration
         self.hist_prices = {} # tracks all historical market prices of each product, {product_name -> List(market_price)}
         self.price = {} # tracks current market price of each product, {product_name -> market_price}
@@ -21,26 +22,29 @@ class Trader:
         self.position = {} # tracks position of each product, {product_name -> position}
         self.order_depths = {}
 
-        for product in self.PROD_LIST: # initialize 0/empty list
+        for product in self.PROD_LIST: # initialize variables
             self.result[product] = []
             self.hist_prices[product] = []
             self.price[product] = 0
             self.mid_price[product] = 0
             self.hist_mid_prices[product] = []
-            self.hist_vol = []
-            self.vol = 0
+            self.hist_vol[product] = []
+            self.vol[product] = 0
             self.position[product] = 0
             self.order_depths[product] = OrderDepth
 
     def run(self, state: TradingState) -> Dict[str, List[Order]]:
         try:
             #-----Data update start-----
-            for product in state.order_depths.keys():
+            for product in self.PROD_LIST:
                 self.result[product] = []
-            self.position = state.position
+                self.position[product] = 0 
             self.order_depths = state.order_depths
-            for product in state.order_depths.keys():
-                self.__update_vol_and_price_weighted_by_vol(self, state, product) # update price of [product]
+
+            self.__update_postion(state)
+            for product in self.PROD_LIST:
+                print(f"product: {product}")
+                self.__update_vol_and_price_weighted_by_vol(state, product) # update price of [product]
                 self.__update_mid_price(product)
             #-----Data update end
             #-----Algo start-----
@@ -78,60 +82,70 @@ class Trader:
         return min(self.MAX_LOT_SIZE, net_max_ask_size) # NOTE: value is positive although it is ask volume
     
     def get_best_bid(self, product):
-        bids = self.order_depths[product].buy_orders
         best_bid = 0
-        if len(bids) > 0:
-            best_bid = max(bids.keys())
+        if product in self.order_depths and len(self.order_depths[product].buy_orders) > 0:
+            bids = self.order_depths[product].buy_orders
+            best_bid = max(bids.keys())     
         return best_bid
     
     def get_best_ask(self, product):
-        asks = self.order_depths[product].sell_orders
         best_ask = 0
-        if len(asks) > 0:
+        if product in self.order_depths and len(self.order_depths[product].sell_orders) > 0:
+            asks = self.order_depths[product].sell_orders
             best_ask = min(asks.keys())
         return best_ask
 
     def get_vol_mean(self, product):
-        return st.mean(self.hist_vol[product])
+        return st.mean(self.hist_vol[product]) if len(self.hist_vol[product]) > 0 else -1
     
     def get_vol_std(self, product):
-        return st.stdev(self.hist_vol[product])
+        return st.stdev(self.hist_vol[product]) if len(self.hist_vol[product]) > 0 else -1
     
     def get_price_mean(self, product):
-        return st.mean(self.hist_prices[product])
+        return st.mean(self.hist_prices[product]) if len(self.hist_prices[product]) > 0 else -1
     
     def get_price_std(self, product):
-        return st.stdev(self.hist_prices[product])
+        return st.stdev(self.hist_prices[product]) if len(self.hist_prices[product]) > 0 else -1
     
     def get_mid_price_mean(self, product):
-        return st.mean(self.hist_mid_prices[product])
+        return st.mean(self.hist_mid_prices[product]) if len(self.hist_mid_prices[product]) > 0 else -1
     
     def get_mid_price_std(self, product):
-        return st.stdev(self.hist_mid_prices[product])
+        return st.stdev(self.hist_mid_prices[product]) if len(self.hist_mid_prices[product]) > 0 else -1
     #-----Basic methods end
 
     #-----Helper methods start (you should not need to call methods below)-----
-    def __update_vol_and_price_weighted_by_vol(self, state, product) -> None:
-        product_own_trades = state.own_trades[product]
-        product_market_trades = state.market_trades[product]
-        t_vol = 0
-        sum_price = 0
-        for trade in product_own_trades:
-            sum_price += trade.price*abs(trade.quantity)
-            t_vol += abs(trade.quantity)
-        for trade in product_market_trades:
-            sum_price += trade.price*abs(trade.quantity)
-            t_vol += abs(trade.quantity)
+    def __update_postion(self, state: TradingState):
+        for product,pos in state.position:
+            self.position[product] = pos
+
+    def __update_vol_and_price_weighted_by_vol(self, state: TradingState, product) -> None:
+        t_vol = sum_price = 0
+        if product in state.own_trades.keys():
+            product_own_trades = state.own_trades[product]
+            for trade in product_own_trades:
+                sum_price += trade.price*abs(trade.quantity)
+                t_vol += abs(trade.quantity)
+        if product in state.market_trades.keys():
+            product_market_trades = state.market_trades[product]
+            for trade in product_market_trades:
+                sum_price += trade.price*abs(trade.quantity)
+                t_vol += abs(trade.quantity)
         if t_vol > 0:
             self.price[product] = sum_price / t_vol
         self.hist_prices[product].append(self.price[product])
         self.vol[product] = t_vol
         self.hist_vol[product].append(t_vol)
-
+    
     def __update_mid_price(self, product) -> None:
-        product_bids = self.order_depths[product].buy_orders
-        product_asks = self.order_depths[product].sell_orders
-        if len(product_bids) > 0 and len(product_asks) > 0:
-            self.mid_price[product] = (max(product_bids.keys()) + min(product_asks.keys())) / 2
-            self.hist_mid_prices[product].append(self.mid_price)
+        product_bids = product_asks = {}
+        max_bid = min_ask = 0
+        if product in self.order_depths.keys():
+            product_bids = self.order_depths[product].buy_orders
+            product_asks = self.order_depths[product].sell_orders
+            max_bid = max(product_bids.keys()) if len(product_bids.keys()) > 0 else 0
+            min_ask = min(product_asks.keys()) if len(product_asks.keys()) > 0 else 0
+            if max_bid > 0 and min_ask > 0:
+                self.mid_price[product] = (max_bid + min_ask) / 2
+        self.hist_mid_prices[product].append(self.mid_price[product])
     #-----Helper methods end
