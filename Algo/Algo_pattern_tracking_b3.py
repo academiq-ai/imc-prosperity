@@ -255,7 +255,7 @@ class Trader:
             elif certainty_expVal_to_avgRet > 1:
                 certainty_expVal_to_avgRet = 1
         #print(f"{product} certainty 1/pattern frequency: {certainty_expVal_to_avgRet}({avgRet}%) {certainty_pattern_freq}")
-        return (certainty_expVal_to_avgRet)*
+        return (certainty_expVal_to_avgRet)*certainty_pattern_freq
     #-----Algo methods end
 
     #-----Basic methods start-----
