@@ -8,7 +8,7 @@ import numpy as np
 class Trader:
     POS_LIMIT: Dict[str, int] = {"PEARLS": 20, "BANANAS": 20} # Dict: {product_name -> pos_limit} NOTE: need to manually update dict of product limits
     PROD_LIST = ("BANANAS", "PEARLS") # Set: product_names NOTE: need to manually update list of products
-    MAX_LOT_SIZE = 10 #change back to 10
+    MAX_LOT_SIZE = 20 #change back to 10
     PATTERN_TRACKING_INTERVAL = 3
     NUM_PAT_CLASS = 3
     PATTERN_MAX_INDEX = NUM_PAT_CLASS ** PATTERN_TRACKING_INTERVAL - 1
@@ -68,7 +68,9 @@ class Trader:
             self.pattern_fill_ct[product] = 0
 
     def run(self, state: TradingState) -> Dict[str, List[Order]]:
-        #try:
+        try:
+            print(state.observations)
+            print(self.position)
             #-----Data update start-----
             for product in self.PROD_LIST:
                 self.result[product] = []
@@ -94,26 +96,28 @@ class Trader:
                     #print(f"{product} max bid/ask size: {self.get_max_bid_size(product)} {self.get_max_ask_size(product)}")
                     exp_val = self.expected_val_of_pattern(product)
                     print(f"{product} expected value: {exp_val}")
-                    certainty = self.certainty_of_expected_val(product, exp_val)
+                    certainty = self.certainty_of_expected_val(product, exp_val)# ** (1/2)
                     print(f"{product} certainty:{certainty}")
-                    if exp_val > 0:
-                        best_ask_price = self.get_best_ask(product)
+                    if exp_val > 0 and product == "BANANAS":
+                        #best_ask_price = self.get_best_ask(product)
                         vol = self.get_max_bid_size(product)
                         #self.place_order(product, best_ask_price, abs(vol*certainty))
-                        self.place_order(product, self.get_best_bid(product), abs(vol*certainty))
-                    elif exp_val < 0:
-                        best_bid_price = self.get_best_bid(product)
+                        #self.place_order(product, self.get_best_bid(product), abs(vol*certainty))
+                        self.place_order(product, self.price[product], abs(vol*certainty))
+                    elif exp_val < 0 and product == "BANANAS":
+                        #best_bid_price = self.get_best_bid(product)
                         vol = self.get_max_ask_size(product)
                         #self.place_order(product, best_bid_price, -abs(vol*certainty))
-                        self.place_order(product, self.get_best_ask(product), -abs(vol*certainty))
+                        #self.place_order(product, self.get_best_ask(product), -abs(vol*certainty))
+                        self.place_order(product, self.price[product], -abs(vol*certainty))
             print(f"pattern: {self.pattern}")
             print('-'*10)
             #-----Algo end
             return self.result
-        #except Exception as e:
-        #    print(f"Error: {e}")
-        #    self.result = {}
-        #    return self.result
+        except Exception as e:
+            print(f"Error: {e}")
+            self.result = {}
+            return self.result
 
 
     #-----Algo methods start-----
@@ -172,55 +176,6 @@ class Trader:
             self.start_tracking[product] = True
             self.prev_price[product] = self.price[product]
 
-    """
-    def __pattern_tracking(self, product):
-        perc_change = 0
-        if self.start_tracking[product] == True and self.price_tracked_ct[product] >= (self.PATTERN_TRACKING_INTERVAL):
-            #print("pattern tracking--phase 3")
-            perc_change = ((self.price[product] - self.prev_price[product]) / self.prev_price[product]) * 100 if self.prev_price[product] > 0 else 0
-            id = np.dot(self.pattern[product], self.base_convert)
-            print(f"{product} id/max index: {id} {self.PATTERN_MAX_INDEX}")
-            if id <= self.PATTERN_MAX_INDEX:
-                self.pattern_net_return_and_ct[product][:,id] += perc_change, 1
-                self.pattern_ct[product] += 1
-            self.price_chg_tf[product] = True
-            if self.price[product] > self.prev_price[product]: #increase in price
-                bit = 2
-                self.up_frq[product] += perc_change, 1
-            elif self.price[product] < self.prev_price[product]: #decrease in price
-                bit = 1
-                self.down_frq[product] += perc_change, 1
-            else: #no change
-                bit = 0
-            print(f"{product} 3_bit: {bit}")
-            self.pattern[product].pop(0)
-            self.pattern[product].append(bit)
-            self.prev_price[product] = self.price[product]
-        elif self.start_tracking[product] == True and self.price_tracked_ct[product] < (self.PATTERN_TRACKING_INTERVAL):
-            #print("pattern tracking--phase 2")
-            perc_change = ((self.price[product] - self.prev_price[product]) / self.prev_price[product]) * 100
-            self.price_chg_tf[product] = True
-            if self.price[product] > self.prev_price[product]: # increase in price
-                bit = 2
-                self.up_frq[product] += perc_change, 1
-            elif self.price[product] > self.prev_price[product]: # decrease in price
-                bit = 1
-                self.down_frq[product] += perc_change,1
-            else: #no price change
-                bit = 0
-            print(f"{product} 2_bit: {bit}")
-            index = self.pattern_fill_ct[product]
-            print(f"{product} index/length: {index} {len(self.pattern[product])}")
-            self.pattern_fill_ct[product] += 1
-            if index < len(self.pattern[product]):
-                self.pattern[product][index] = bit
-                self.price_tracked_ct[product] += 1
-            self.prev_price[product] = self.price[product]
-        elif self.start_tracking[product] == False and self.price[product] != 0: #ensure start tracking with non-zero number
-            #print("pattern tracking--phase 1")
-            self.start_tracking[product] = True
-            self.prev_price[product] = self.price[product]
-        """
     def __get_pattern_id(self, product):
         #print(self.pattern[product])
         #print(self.base_convert)
@@ -255,7 +210,13 @@ class Trader:
             elif certainty_expVal_to_avgRet > 1:
                 certainty_expVal_to_avgRet = 1
         #print(f"{product} certainty 1/pattern frequency: {certainty_expVal_to_avgRet}({avgRet}%) {certainty_pattern_freq}")
-        return (certainty_expVal_to_avgRet)*certainty_pattern_freq
+        #return (certainty_expVal_to_avgRet)*certainty_pattern_freq
+        num = (certainty_expVal_to_avgRet) if certainty_pattern_freq >= 0.25 else 0
+        if num > 1:
+            num = 1
+        elif num < 0:
+            num = 0
+        return num
     #-----Algo methods end
 
     #-----Basic methods start-----
