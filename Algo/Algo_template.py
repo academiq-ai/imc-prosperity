@@ -64,7 +64,10 @@ class Trader:
                 self.__update_mid_price(product)
             #-----Data update end
             #-----Algo start-----
-
+            print(self.best_ask_price)
+            pritn(self.best_bid_price)
+            print(self.avg_ask_price)
+            print(self.avg_bid_price)
             #-----Algo end
             return self.result
         except Exception:
@@ -189,10 +192,10 @@ class Trader:
             max_bid = max(product_bids.keys()) if len(product_bids.keys()) > 0 else 0
             min_ask = min(product_asks.keys()) if len(product_asks.keys()) > 0 else 0
             for price, vol in product_bids.items():
-                bid_sum += price
+                bid_sum += price*abs(vol)
                 bid_ct += abs(vol)
             for price, vol in product_asks.items():
-                ask_sum += price
+                ask_sum += price*abs(vol)
                 ask_ct += abs(vol)  
             if max_bid > 0 and min_ask > 0:
                 self.mid_price[product] = (max_bid + min_ask) / 2
