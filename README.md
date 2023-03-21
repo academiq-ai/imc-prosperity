@@ -2,6 +2,45 @@
 
 # IMC Prosperity
 
+## Pickle (.pkl) Files
+
+.pkl files are basically easy ways to store dictionaries and lists into local readable files. Refer to the following code example to read pkl files;
+
+```python
+import pickle
+
+
+def main():
+    with open("./data/round-1-pkl/BANANAS_prices_day0.pkl", "rb") as f:
+        data = pickle.load(f)
+    print(data)
+
+
+if __name__ == "__main__":
+    main()
+
+```
+
+`PRODNAME_prices_dayN.pkl` is a list of following dict objects
+
+```python
+{
+    'timestamp': 0,
+    'buy_orders': {4893.0: 1, 4892.0: 30.0}  # OrderDepth.buy_orders
+    'sell_orders': {4899.0: 30}
+}
+```
+
+`PRODNAME_trades_dayNnn.pkl` is a list of following dict objects
+
+```python
+{
+    'timestamp': 0,
+    9333: 2 # price: quantity
+}
+```
+
+
 ## Installation
 ### Anaconda (See Documentation [here](https://docs.anaconda.com/anaconda/install/)):
 
