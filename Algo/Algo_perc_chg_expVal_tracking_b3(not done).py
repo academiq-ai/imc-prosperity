@@ -4,14 +4,17 @@ import statistics as st
 import numpy as np
 
 """NOTE: if volume > 0 -> bid; if volume < 0 -> ask"""
+"""This algo tracks the percentage change in price for every [PATTERN_TRACKING_INTERVAL] interval
+    and track the expected value of each percentage change. It then places bets based on the 
+    expected value of the percentage change of the current interval"""
 
 class Trader:
     POS_LIMIT: Dict[str, int] = {"PEARLS": 20, "BANANAS": 20} # Dict: {product_name -> pos_limit} NOTE: need to manually update dict of product limits
     PROD_LIST = ("PEARLS", "BANANAS") # Set: product_names NOTE: need to manually update list of products
     MAX_LOT_SIZE = 20
-    PATTERN_TRACKING_INTERVAL = 10
+    PATTERN_TRACKING_INTERVAL = 5
     PATTERN_TRACKING_INTERVAL += 1
-    PERC_ROUND_DEC = 3
+    PERC_ROUND_DEC = 2
 
     def __init__(self) -> None:
         self.state = TradingState
@@ -29,9 +32,11 @@ class Trader:
         self.t_price_chg_ct = {}
         self.track_start_tf = {}
         self.weight2 = 1
-        self.step2 = 0.05#0.05 #0.05
+        self.step2 = 0 #0.05 #0.05
         self.up_frq = {} #[total up, no. of up days]
         self.down_frq = {}
+        self.pattern_ct = {}
+        #self.pattern_net_return_and_ct = {}
 
 
         for product in self.PROD_LIST: # initialize variables
@@ -49,10 +54,12 @@ class Trader:
             self.track_start_tf[product] = False
             self.up_frq[product] = np.zeros(2)
             self.down_frq[product] = np.zeros(2)
+            self.pattern_ct[product] = 0
+            #self.pattern_net_return_and_ct[product] = [1,id]
 
     def run(self, state: TradingState) -> Dict[str, List[Order]]:
-            print("-"*10)
-            print(state.observations)
+            #print("-"*10)
+            #print(state.observations)
         #try:
             #-----Data update start-----
             for product in self.PROD_LIST:
@@ -62,29 +69,33 @@ class Trader:
 
             self.__update_postion(state)
             for product in self.PROD_LIST:
-                print(f"product: {product}")
+                #print(f"product: {product}")
                 self.__update_vol_and_price_weighted_by_vol(state, product) # update price of [product]
                 self.__update_mid_price(product)
             #-----Data update end
             #-----Algo start-----
+            #print(self.position)
+            num = self.price["BANANAS"]
+            print(f",{num}")
             for product in self.PROD_LIST:
-                if self.track_start_tf[product] == True:
-                    cur_price_chg = 100 * (self.hist_prices[product][-1]-self.hist_prices[product][-self.PATTERN_TRACKING_INTERVAL]) / self.hist_prices[product][-self.PATTERN_TRACKING_INTERVAL]
-                    prob_below = 0
+                if self.track_start_tf[product] == True and self.hist_prices[product][-self.PATTERN_TRACKING_INTERVAL+1] != 0:
+                    cur_price_chg = 100 * (self.hist_prices[product][-1]-self.hist_prices[product][-self.PATTERN_TRACKING_INTERVAL+1]) / self.hist_prices[product][-self.PATTERN_TRACKING_INTERVAL+1]
+                    cur_price_chg = round(cur_price_chg, self.PERC_ROUND_DEC)
+                    #prob_below = 0
                     #prices = np.fromiter(self.price_chg_freq[product].keys(), dtype=float)
                     #print(f"*****{round(cur_price_chg, self.PERC_ROUND_DEC)} | {prices} | {self.t_price_chg_ct[product]}")
-                    if self.price[product] != 0 and self.t_price_chg_ct[product] != 0:
+                    if self.price[product] != 0 and self.t_price_chg_ct[product] != 0 and cur_price_chg in self.price_chg_freq[product].keys():
                         #prices_below = prices[prices<cur_price_chg]
                         #print(f"{product} prices below: {prices_below}")
                         #ct = 0
-                        cur_price_chg = round(cur_price_chg, self.PERC_ROUND_DEC)
                         #for price in prices_below:
                         #    ct += self.price_chg_freq[product][price]
                         #denom = self.t_price_chg_ct[product] - self.price_chg_freq[product][cur_price_chg] if cur_price_chg in self.price_chg_freq[product].keys() else self.t_price_chg_ct[product]
                         #prob_below = ct / denom if denom != 0 else 0.5
                         #print(f"prob_below: {prob_below} | {ct} / {denom}")
-                        exp_val = self.price_chg_freq[product][cur_price_chg]
-                        certainty = self.certainty_of_expected_val(exp_val)
+                        #print(f"cur_price_chg: {self.price_chg_freq[product][cur_price_chg]}")
+                        exp_val = self.price_chg_freq[product][cur_price_chg][0] / self.price_chg_freq[product][cur_price_chg][1] if self.price_chg_freq[product][cur_price_chg][1] > 0 else 0
+                        certainty = self.certainty_of_expected_val(product, exp_val, cur_price_chg)
                         if exp_val > 0 and product == "BANANAS":
                             #best_ask_price = self.get_best_ask(product)
                             vol = self.get_max_bid_size(product)
@@ -96,20 +107,21 @@ class Trader:
                             vol = self.get_max_ask_size(product)
                             #self.place_order(product, best_bid_price, -abs(vol*certainty))
                             #self.place_order(product, self.get_best_ask(product), -abs(vol*certainty))
-                        self.place_order(product, self.price[product], -abs(vol*certainty))
+                            self.place_order(product, self.price[product], -abs(vol*certainty))
                         
             for product in self.PROD_LIST:
                 if self.track_start_tf[product] == True:
                     if self.hist_prices[product][-self.PATTERN_TRACKING_INTERVAL] != 0:
-                        price_chg = 100 * (self.hist_prices[product][-1]-self.hist_prices[product][-self.PATTERN_TRACKING_INTERVAL]) / self.hist_prices[product][-self.PATTERN_TRACKING_INTERVAL]
+                        price_chg = 100 * (self.hist_prices[product][-2]-self.hist_prices[product][-self.PATTERN_TRACKING_INTERVAL]) / self.hist_prices[product][-self.PATTERN_TRACKING_INTERVAL]
                         rounded_p = round(price_chg, self.PERC_ROUND_DEC)
                         
-                        cur_price_chg = ((self.price[product] - self.hist_prices[product][-1]) / self.hist_prices[product][-1]) * 100 if self.hist_prices[product][-1] != 0 else 0
+                        cur_price_chg = ((self.price[product] - self.hist_prices[product][-2]) / self.hist_prices[product][-2]) * 100 if self.hist_prices[product][-2] != 0 else 0
                         #print(f"{product} rounded_p: {rounded_p}")
                         if rounded_p in self.price_chg_freq[product].keys():
-                            self.price_chg_freq[product][rounded_p] += cur_price_chg
+                            self.price_chg_freq[product][rounded_p] += cur_price_chg,self.weight2
                         else:
-                            self.price_chg_freq[product][rounded_p] = cur_price_chg
+                            self.price_chg_freq[product][rounded_p] = np.array([cur_price_chg,self.weight2])
+                        self.pattern_ct[product] += self.weight2
                         self.t_price_chg_ct[product] += self.weight2
                         self.weight2 += self.step2
                         if cur_price_chg > 0: #increase in price
@@ -133,8 +145,8 @@ class Trader:
     def round_to_p5(self, x):
         return round(x,1)
     
-    def certainty_of_expected_val(self, product, exp_val):
-        #certainty_pattern_freq = self.pattern_net_return_and_ct[product][1,id] / self.pattern_ct[product] if self.pattern_ct[product] > 0 else 0
+    def certainty_of_expected_val(self, product, exp_val, cur_price_chg):
+        certainty_pattern_freq = self.price_chg_freq[product][cur_price_chg][1] / self.pattern_ct[product] if self.pattern_ct[product] > 0 else 0
         certainty_expVal_to_avgRet = 0
         avgRet = None
         if exp_val != 0:
@@ -150,7 +162,7 @@ class Trader:
                 certainty_expVal_to_avgRet = 1
         #print(f"{product} certainty 1/pattern frequency: {certainty_expVal_to_avgRet}({avgRet}%) {certainty_pattern_freq}")
         #return (certainty_expVal_to_avgRet)*certainty_pattern_freq
-        num = (certainty_expVal_to_avgRet) #if certainty_pattern_freq >= 0.2 else 0
+        num = (certainty_expVal_to_avgRet) if certainty_pattern_freq >= 0.1 else 0
         if num > 1:
             num = 1
         elif num < 0:

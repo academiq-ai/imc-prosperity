@@ -211,7 +211,7 @@ class Trader:
                 certainty_expVal_to_avgRet = 1
         #print(f"{product} certainty 1/pattern frequency: {certainty_expVal_to_avgRet}({avgRet}%) {certainty_pattern_freq}")
         #return (certainty_expVal_to_avgRet)*certainty_pattern_freq
-        num = (certainty_expVal_to_avgRet) if certainty_pattern_freq >= 0.25 else 0
+        num = (certainty_expVal_to_avgRet) if certainty_pattern_freq >= 0.1 else 0
         if num > 1:
             num = 1
         elif num < 0:

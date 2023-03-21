@@ -27,6 +27,10 @@ class Trader:
         self.vol = {} # tracks current volume of each product, {product_name -> volume}
         self.position = {} # tracks position of each product, {product_name -> position}
         self.order_depths = {}
+        self.last_trade_price = {}
+        self.prev_pos = {}
+        self.account_balance = 0
+        self.pnl = 0
 
         self.price_freq = {}
         self.t_price_ct = {}
@@ -68,6 +72,8 @@ class Trader:
             self.price_chg_freq[product] = {}
             self.t_price_chg_ct[product] = 0
             self.track_start_tf[product] = False
+            self.last_trade_price[product] = 0
+            self.prev_pos[product] = 0
 
             self.pattern_net_return_and_ct[product] = np.zeros((2,self.NUM_PAT_CLASS**self.PATTERN_TRACKING_INTERVAL))
             self.start_tracking[product] = False
@@ -82,21 +88,22 @@ class Trader:
             self.pattern_fill_ct[product] = 0
 
     def run(self, state: TradingState) -> Dict[str, List[Order]]:
-        print("-"*10)
-        print(state.observations)
+        #print("-"*10)
+        #print(state.observations)
         try:
             #-----Data update start-----
             for product in self.PROD_LIST:
                 self.result[product] = []
-                self.position[product] = 0 
+                self.position[product] = 0
             self.order_depths = state.order_depths
 
             self.__update_postion(state)
             for product in self.PROD_LIST:
-                print(f"product: {product}")
+                #print(f"product: {product}")
                 self.__update_vol_and_price_weighted_by_vol(state, product) # update price of [product]
                 self.__update_mid_price(product)
                 self.__pattern_tracking(product)
+            self.__update_pnl()
             #-----Data update end
             #-----Algo start-----
             #PEARLS
@@ -112,7 +119,7 @@ class Trader:
                         ct += self.price_freq[product][price]
                     denom = self.t_price_ct[product] - self.price_freq[product][self.round_to_p5(self.price[product])] if self.round_to_p5(self.price[product]) in self.price_freq[product].keys() else self.t_price_ct[product]
                     prob_below = ct / denom if denom != 0 else 0.5
-                    print(f"prob_below: {prob_below} | {ct} / {denom}")
+                    #print(f"prob_below: {prob_below} | {ct} / {denom}")
                     if prob_below < 0.5 and product == "PEARLS":
                         buy_prob = np.interp(prob_below, [0,0.5], [1,0])
                         #buy_prob = 2*buy_prob**2-buy_prob**6
@@ -142,16 +149,16 @@ class Trader:
             for product in self.PROD_LIST:
                 #print(f"{product} max bid/ask size: {self.get_max_bid_size(product)} {self.get_max_ask_size(product)}")
                 #print(f"{product} best bid/ask price: {self.get_best_bid(product)} {self.get_best_ask(product)}")
-                print(f"{product} price/mean price: {self.price[product]} {self.get_price_mean(product)}")
+                #print(f"{product} price/mean price: {self.price[product]} {self.get_price_mean(product)}")
                 #print(f"{product} mid-price/mean mid-price: {self.mid_price[product]} {self.get_mid_price_mean(product)}")
                 #print(f"{product} volume/mean volume: {self.vol[product]} {self.get_vol_mean(product)}")
                 #print(f"{product} ct/TF: {self.pattern_ct[product]} {self.price_chg_tf[product]}")
                 if self.pattern_ct[product] > self.START_PT_TRADE_CT: #and self.price_chg_tf[product] == True:
                     #print(f"{product} max bid/ask size: {self.get_max_bid_size(product)} {self.get_max_ask_size(product)}")
                     exp_val = self.expected_val_of_pattern(product)
-                    print(f"{product} expected value: {exp_val}")
+                    #print(f"{product} expected value: {exp_val}")
                     certainty = self.certainty_of_expected_val(product, exp_val)# ** (1/2)
-                    print(f"{product} certainty:{certainty}")
+                    #print(f"{product} certainty:{certainty}")
                     if exp_val > 0 and product == "BANANAS":
                         #best_ask_price = self.get_best_ask(product)
                         vol = self.get_max_bid_size(product)
@@ -214,6 +221,7 @@ class Trader:
                     if len(prices[prices > 0]) >= self.PATTERN_TRACKING_INTERVAL:
                         self.track_start_tf[product] = True"""
             #-----Algo end
+            self.__update_prev_pos()
             return self.result
         except Exception:
             self.result = {}
@@ -233,7 +241,7 @@ class Trader:
                 self.price_chg_tf[product] = True
                 #print(3)
                 id = self.__get_pattern_id(product)
-                print(f"id:{id}")
+                #print(f"id:{id}")
                 if id <= self.PATTERN_MAX_INDEX:
                     self.pattern_net_return_and_ct[product][:,id] += perc_change, 1
                     self.pattern_ct[product] += 1
@@ -321,6 +329,7 @@ class Trader:
     def place_order(self, product, price, quantity): # NOTE: price and quantity do not need to be integers; this method will take care of it
         if product in self.PROD_LIST and int(round(quantity)) != 0 and int(round(price)) != 0:
             self.result[product].append(Order(product, int(round(price)), int(round(quantity))))
+            self.last_trade_price[product] = int(round(price))
     
     def get_max_bid_size(self, product):
         net_bid_outstanding = 0
@@ -405,4 +414,22 @@ class Trader:
             if max_bid > 0 and min_ask > 0:
                 self.mid_price[product] = (max_bid + min_ask) / 2
         self.hist_mid_prices[product].append(self.mid_price[product])
+    
+    def __update_pnl(self):
+        order_trans = {}
+        for product in self.PROD_LIST:
+            order_trans[product] = self.position[product] - self.prev_pos[product]
+            print(f"{product} ordered exec: {order_trans[product]}")
+            self.account_balance += self.last_trade_price[product] * -order_trans[product]
+        self.pnl = self.account_balance
+        for product in self.PROD_LIST:
+            self.pnl += self.position[product] * self.price[product]
+        print(f",{self.pnl}")
+        print(f"pos{self.position}")
+        print("-"*10)
+    
+    def __update_prev_pos(self):
+        for product in self.PROD_LIST:
+            self.prev_pos[product] = self.position[product]
+
     #-----Helper methods end
