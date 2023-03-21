@@ -17,6 +17,14 @@ class Trader:
         self.price = {} # tracks current market price of each product, {product_name -> market_price}
         self.mid_price = {} # tracks current market mid price of each product, {product_name -> mid_price}
         self.hist_mid_prices = {} # tracks all historical mid_prices of each product, {product_name -> List(mid_price)} 
+        self.best_ask_price = {}
+        self.hist_best_ask_prices = {}
+        self.best_bid_price = {}
+        self.hist_best_bid_prices = {}
+        self.avg_ask_price = {}
+        self.hist_avg_ask_prices = {}
+        self.avg_bid_price = {}
+        self.hist_avg_bid_prices = {}
         self.hist_vol = {} # tracks all historical volume of each product, {product_name -> List(volume)}
         self.vol = {} # tracks current volume of each product, {product_name -> volume}
         self.position = {} # tracks position of each product, {product_name -> position}
@@ -28,11 +36,18 @@ class Trader:
             self.price[product] = 0
             self.mid_price[product] = 0
             self.hist_mid_prices[product] = []
+            self.best_ask_price[product] = 0
+            self.hist_best_ask_prices[product] = []
+            self.best_bid_price[product] = 0
+            self.hist_best_bid_prices[product] = []
+            self.avg_ask_price[product] = 0
+            self.hist_avg_ask_prices[product] = []
+            self.avg_bid_price[product] = 0
+            self.hist_avg_bid_prices[product] = []
             self.hist_vol[product] = []
             self.vol[product] = 0
             self.position[product] = 0
             self.order_depths[product] = OrderDepth
-
     def run(self, state: TradingState) -> Dict[str, List[Order]]:
         try:
             #-----Data update start-----
@@ -40,6 +55,7 @@ class Trader:
                 self.result[product] = []
                 self.position[product] = 0 
             self.order_depths = state.order_depths
+            self.timestamp = state.timestamp
 
             self.__update_postion(state)
             for product in self.PROD_LIST:
@@ -112,6 +128,30 @@ class Trader:
     
     def get_mid_price_std(self, product):
         return st.stdev(self.hist_mid_prices[product]) if len(self.hist_mid_prices[product]) > 0 else -1
+    
+    def get_best_bid_mean(self, product):
+        return st.mean(self.hist_best_bid_prices[product]) if len(self.hist_best_bid_prices[product]) > 0 else -1
+    
+    def get_best_bid_std(self, product):
+        return st.stdev(self.hist_best_bid_prices[product]) if len(self.hist_best_bid_prices[product]) > 0 else -1
+    
+    def get_best_ask_mean(self, product):
+        return st.mean(self.hist_best_ask_prices[product]) if len(self.hist_best_ask_prices[product]) > 0 else -1
+    
+    def get_best_ask_std(self, product):
+        return st.stdev(self.hist_best_ask_prices[product]) if len(self.hist_best_ask_prices[product]) > 0 else -1
+    
+    def get_avg_bid_mean(self, product):
+        return st.mean(self.hist_avg_bid_prices[product]) if len(self.hist_avg_bid_prices[product]) > 0 else -1
+    
+    def get_avg_bid_std(self, product):
+        return st.stdev(self.hist_avg_bid_prices[product]) if len(self.hist_avg_bid_prices[product]) > 0 else -1
+    
+    def get_avg_ask_mean(self, product):
+        return st.mean(self.hist_avg_ask_prices[product]) if len(self.hist_avg_ask_prices[product]) > 0 else -1
+    
+    def get_avg_ask_std(self, product):
+        return st.stdev(self.hist_avg_ask_prices[product]) if len(self.hist_avg_ask_prices[product]) > 0 else -1
     #-----Basic methods end
 
     #-----Helper methods start (you should not need to call methods below)-----
@@ -124,28 +164,51 @@ class Trader:
         if product in state.own_trades.keys():
             product_own_trades = state.own_trades[product]
             for trade in product_own_trades:
-                sum_price += trade.price*abs(trade.quantity)
-                t_vol += abs(trade.quantity)
+                if trade.timestamp == self.timestamp:
+                    sum_price += trade.price*abs(trade.quantity)
+                    t_vol += abs(trade.quantity)
         if product in state.market_trades.keys():
             product_market_trades = state.market_trades[product]
             for trade in product_market_trades:
-                sum_price += trade.price*abs(trade.quantity)
-                t_vol += abs(trade.quantity)
+                if trade.timestamp == self.timestamp:
+                    sum_price += trade.price*abs(trade.quantity)
+                    t_vol += abs(trade.quantity)
         if t_vol > 0:
             self.price[product] = sum_price / t_vol
         self.hist_prices[product].append(self.price[product])
         self.vol[product] = t_vol
         self.hist_vol[product].append(t_vol)
+        
     
     def __update_mid_price(self, product) -> None:
         product_bids = product_asks = {}
-        max_bid = min_ask = 0
+        max_bid = min_ask = avg_ask = avg_bid = bid_sum = bid_ct = ask_sum = ask_ct = 0
         if product in self.order_depths.keys():
             product_bids = self.order_depths[product].buy_orders
             product_asks = self.order_depths[product].sell_orders
             max_bid = max(product_bids.keys()) if len(product_bids.keys()) > 0 else 0
             min_ask = min(product_asks.keys()) if len(product_asks.keys()) > 0 else 0
+            for price, vol in product_bids.items():
+                bid_sum += price
+                bid_ct += abs(vol)
+            for price, vol in product_asks.items():
+                ask_sum += price
+                ask_ct += abs(vol)  
             if max_bid > 0 and min_ask > 0:
                 self.mid_price[product] = (max_bid + min_ask) / 2
+            elif max_bid > 0 or min_ask > 0:
+                self.mid_price[product] = (max_bid + min_ask)
+            if bid_ct > 0:
+                avg_bid = bid_sum / bid_ct
+            if ask_ct > 0:
+                avg_ask = ask_sum / ask_ct
         self.hist_mid_prices[product].append(self.mid_price[product])
+        self.best_ask_price[product] = min_ask
+        self.hist_best_ask_prices[product].append(self.best_ask_price[product])
+        self.best_bid_price[product] = max_bid
+        self.hist_best_bid_prices[product].append(self.best_bid_price[product])
+        self.avg_ask_price[product] = avg_ask
+        self.hist_avg_ask_prices[product].append(avg_ask)
+        self.avg_bid_price[product] = avg_bid
+        self.hist_avg_bid_prices[product].append(avg_bid)
     #-----Helper methods end
