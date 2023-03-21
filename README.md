@@ -2,6 +2,34 @@
 
 # IMC Prosperity
 
+## Pickle (.pkl) Files
+
+
+```python
+import pickle
+
+
+def main():
+    with open("./data/round-1-pkl/BANANAS_prices_day0.pkl", "rb") as f:
+        data = pickle.load(f)
+    print(data)
+
+
+if __name__ == "__main__":
+    main()
+
+```
+
+```
+{
+    'timestamp': 0,
+    'buy_orders': {4893.0: 1, 4892.0: 30.0}
+    'sell_orders': {4899.0: 30}
+}
+
+```
+
+
 ## Installation
 ### Anaconda (See Documentation [here](https://docs.anaconda.com/anaconda/install/)):
 
