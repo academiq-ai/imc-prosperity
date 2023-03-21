@@ -115,43 +115,43 @@ class Trader:
         return st.mean(self.hist_vol[product]) if len(self.hist_vol[product]) > 0 else -1
     
     def get_vol_std(self, product):
-        return st.stdev(self.hist_vol[product]) if len(self.hist_vol[product]) > 0 else -1
+        return st.stdev(self.hist_vol[product]) if len(self.hist_vol[product]) > 1 else -1
     
     def get_price_mean(self, product):
         return st.mean(self.hist_prices[product]) if len(self.hist_prices[product]) > 0 else -1
     
     def get_price_std(self, product):
-        return st.stdev(self.hist_prices[product]) if len(self.hist_prices[product]) > 0 else -1
+        return st.stdev(self.hist_prices[product]) if len(self.hist_prices[product]) > 1 else -1
     
     def get_mid_price_mean(self, product):
         return st.mean(self.hist_mid_prices[product]) if len(self.hist_mid_prices[product]) > 0 else -1
     
     def get_mid_price_std(self, product):
-        return st.stdev(self.hist_mid_prices[product]) if len(self.hist_mid_prices[product]) > 0 else -1
+        return st.stdev(self.hist_mid_prices[product]) if len(self.hist_mid_prices[product]) > 1 else -1
     
     def get_best_bid_mean(self, product):
         return st.mean(self.hist_best_bid_prices[product]) if len(self.hist_best_bid_prices[product]) > 0 else -1
     
     def get_best_bid_std(self, product):
-        return st.stdev(self.hist_best_bid_prices[product]) if len(self.hist_best_bid_prices[product]) > 0 else -1
+        return st.stdev(self.hist_best_bid_prices[product]) if len(self.hist_best_bid_prices[product]) > 1 else -1
     
     def get_best_ask_mean(self, product):
         return st.mean(self.hist_best_ask_prices[product]) if len(self.hist_best_ask_prices[product]) > 0 else -1
     
     def get_best_ask_std(self, product):
-        return st.stdev(self.hist_best_ask_prices[product]) if len(self.hist_best_ask_prices[product]) > 0 else -1
+        return st.stdev(self.hist_best_ask_prices[product]) if len(self.hist_best_ask_prices[product]) > 1 else -1
     
     def get_avg_bid_mean(self, product):
         return st.mean(self.hist_avg_bid_prices[product]) if len(self.hist_avg_bid_prices[product]) > 0 else -1
     
     def get_avg_bid_std(self, product):
-        return st.stdev(self.hist_avg_bid_prices[product]) if len(self.hist_avg_bid_prices[product]) > 0 else -1
+        return st.stdev(self.hist_avg_bid_prices[product]) if len(self.hist_avg_bid_prices[product]) > 1 else -1
     
     def get_avg_ask_mean(self, product):
         return st.mean(self.hist_avg_ask_prices[product]) if len(self.hist_avg_ask_prices[product]) > 0 else -1
     
     def get_avg_ask_std(self, product):
-        return st.stdev(self.hist_avg_ask_prices[product]) if len(self.hist_avg_ask_prices[product]) > 0 else -1
+        return st.stdev(self.hist_avg_ask_prices[product]) if len(self.hist_avg_ask_prices[product]) > 1 else -1
     #-----Basic methods end
 
     #-----Helper methods start (you should not need to call methods below)-----
