@@ -167,13 +167,14 @@ class Trader:
         if product in state.own_trades.keys():
             product_own_trades = state.own_trades[product]
             for trade in product_own_trades:
-                if trade.timestamp == self.timestamp:
+                if trade.timestamp >= self.timestamp-100:
                     sum_price += trade.price*abs(trade.quantity)
                     t_vol += abs(trade.quantity)
         if product in state.market_trades.keys():
             product_market_trades = state.market_trades[product]
             for trade in product_market_trades:
-                if trade.timestamp == self.timestamp:
+                print(state.timestamp, trade.timestamp)
+                if trade.timestamp >= self.timestamp-100:
                     sum_price += trade.price*abs(trade.quantity)
                     t_vol += abs(trade.quantity)
         if t_vol > 0:
