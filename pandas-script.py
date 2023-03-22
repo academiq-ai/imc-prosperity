@@ -40,6 +40,8 @@ def convert_trades(csv_path, file_name):
                 {k: prev_dict[k] for k in prev_dict.keys() - curr_dict.keys()}
             )
 
+        symbol_dict_list.append({timestamp: -1})
+
         if symbol == "PEARLS":
             PEARLS = symbol_dict_list
         elif symbol == "BANANAS":
@@ -68,7 +70,7 @@ def convert_prices(csv_path, file_name):
             buy_orders = {}
             sell_orders = {}
 
-            for i, row in ts_df.iterrows():
+            for _, row in ts_df.iterrows():
                 for j in range(1, 4):
                     buy_price_col = f"bid_price_{j}"
                     buy_volume_col = f"bid_volume_{j}"
@@ -90,6 +92,8 @@ def convert_prices(csv_path, file_name):
                     "sell_orders": sell_orders,
                 }
             )
+
+        symbol_dict_list.append({timestamp: -1})
 
         if symbol == "PEARLS":
             PEARLS = symbol_dict_list
