@@ -70,9 +70,9 @@ class Trader:
                     ct = 0
                     for price in prices_below:
                         ct += self.price_freq[product][price]
-                    denom = self.t_price_ct[product] - self.price_freq[product][self.price[product]] if self.price[product] in self.price_freq[product].keys() else self.t_price_ct[product]
+                    denom = self.t_price_ct[product] - self.price_freq[product][self.round_to_p5(self.price[product])] if self.round_to_p5(self.price[product]) in self.price_freq[product].keys() else self.t_price_ct[product]
                     prob_below = ct / denom if denom != 0 else 0.5
-                    print(f"prob_below: {prob_below} | {ct} / {denom}")
+                    #print(f"prob_below: {prob_below} | {ct} / {denom}")
                     if prob_below < 0.5 and product == "PEARLS":
                         buy_prob = np.interp(prob_below, [0,0.5], [1,0])
                         #buy_prob = 2*buy_prob**2-buy_prob**6
@@ -88,12 +88,10 @@ class Trader:
                     
             for product in self.PROD_LIST:
                 rounded_p = self.round_to_p5(self.price[product])
-                
                 #print(f"{product} rounded_p: {rounded_p}")
                 if rounded_p != 0:
                     if rounded_p in self.price_freq[product].keys():
-                        self.price_freq[product][rounded_p] += self.weight
-                        
+                        self.price_freq[product][rounded_p] += self.weight  
                     else:
                         self.price_freq[product][rounded_p] = self.weight
                     self.t_price_ct[product] += self.weight

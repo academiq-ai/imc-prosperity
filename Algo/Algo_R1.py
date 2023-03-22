@@ -11,7 +11,7 @@ class Trader:
     MAX_LOT_SIZE = 20
     #PERC_ROUND_DEC = 3
     #PATTERN_TRACKING_INTERVAL = 10
-    PATTERN_TRACKING_INTERVAL = 3
+    PATTERN_TRACKING_INTERVAL = 4
     NUM_PAT_CLASS = 3
     PATTERN_MAX_INDEX = NUM_PAT_CLASS ** PATTERN_TRACKING_INTERVAL - 1
     START_PT_TRADE_CT = 0
@@ -38,7 +38,7 @@ class Trader:
         self.t_price_chg_ct = {}
         self.track_start_tf = {}
         self.weight = 1
-        self.step = 0.05 #0.05
+        self.step = 0.1 #0.05
         self.weight2 = 1
         self.step2 = 0.05 #0.05
 
@@ -90,7 +90,7 @@ class Trader:
     def run(self, state: TradingState) -> Dict[str, List[Order]]:
         #print("-"*10)
         #print(state.observations)
-        try:
+        #try:
             #-----Data update start-----
             for product in self.PROD_LIST:
                 self.result[product] = []
@@ -103,7 +103,7 @@ class Trader:
                 self.__update_vol_and_price_weighted_by_vol(state, product) # update price of [product]
                 self.__update_mid_price(product)
                 self.__pattern_tracking(product)
-            self.__update_pnl()
+            #self.__update_pnl()
             #-----Data update end
             #-----Algo start-----
             #PEARLS
@@ -221,11 +221,11 @@ class Trader:
                     if len(prices[prices > 0]) >= self.PATTERN_TRACKING_INTERVAL:
                         self.track_start_tf[product] = True"""
             #-----Algo end
-            self.__update_prev_pos()
+            #self.__update_prev_pos()
             return self.result
-        except Exception:
-            self.result = {}
-            return self.result
+        #except Exception:
+        #    self.result = {}
+        #    return self.result
 
     #-----Algo methods start-----
     def round_to_p5(self, x):
@@ -415,7 +415,7 @@ class Trader:
                 self.mid_price[product] = (max_bid + min_ask) / 2
         self.hist_mid_prices[product].append(self.mid_price[product])
     
-    def __update_pnl(self):
+    """def __update_pnl(self):
         order_trans = {}
         for product in self.PROD_LIST:
             order_trans[product] = self.position[product] - self.prev_pos[product]
@@ -430,6 +430,6 @@ class Trader:
     
     def __update_prev_pos(self):
         for product in self.PROD_LIST:
-            self.prev_pos[product] = self.position[product]
+            self.prev_pos[product] = self.position[product]"""
 
     #-----Helper methods end

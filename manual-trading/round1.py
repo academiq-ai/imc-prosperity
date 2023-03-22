@@ -14,12 +14,13 @@ def main():
     # combination: 3, 0, 1, 2, 0, 3
 
     profits = []
-    for p2 in [0, 1, 2]:
-        for p3 in [0, 1, 2]:
-            for p4 in [0, 1, 2]:
-                combination = [3, p2, p3, p4, 3]
-                profit = calcProfit(combination)
-                profits.append({"strategy": combination, "profit": profit})
+    for p1 in [0,1,2,3]:
+        for p2 in [0, 1, 2, 3]:
+            for p3 in [0, 1, 2, 3]:
+                for p4 in [0, 1, 2, 3]:
+                    combination = [3, p1, p2, p3, p4, 3]
+                    profit = calcProfit(combination)
+                    profits.append({"strategy": combination, "profit": profit})
 
     result = max(
         [p for p in profits if p["profit"] is not None], key=lambda x: x["profit"]
@@ -34,14 +35,14 @@ def calcProfit(combination):
     tradeTable = np.array(
         [
             [1, 0.5, 1.45, 0.75],
-            [1.95, 0.5, 3.1, 1.49],
+            [1.95, 1, 3.1, 1.49],
             [0.67, 0.31, 1, 0.48],
             [1.34, 0.64, 1.98, 1],
         ]
     )
 
     for i in range(len(combination) - 1):
-        balance *= tradeTable[combination[i + 1], combination[i]]
+        balance *= tradeTable[combination[i], combination[i+1]]
     return balance
 
 

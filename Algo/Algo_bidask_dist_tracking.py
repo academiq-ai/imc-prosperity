@@ -6,9 +6,10 @@ import numpy as np
 """NOTE: if volume > 0 -> bid; if volume < 0 -> ask"""
 
 class Trader:
-    POS_LIMIT: Dict[str, int] = {} # Dict: {product_name -> pos_limit} NOTE: need to manually update dict of product limits
+    POS_LIMIT: Dict[str, int] = {"PEARLS": 20, "BANANAS": 20} # Dict: {product_name -> pos_limit} NOTE: need to manually update dict of product limits
     PROD_LIST = ("PEARLS", "BANANAS") # Set: product_names NOTE: need to manually update list of products
     MAX_LOT_SIZE = 10
+    PEARL_PRICE = 10000
 
     def __init__(self) -> None:
         self.state = TradingState
@@ -30,6 +31,20 @@ class Trader:
         self.position = {} # tracks position of each product, {product_name -> position}
         self.order_depths = {}
 
+        #Algo variables
+        self.max_avg_bid_ask_spread = {} #max_avg_bid - min_avg_ask
+        self.max_avg_bid = {}
+        self.min_avg_ask = {}
+        self.avg_bids_coor = {} #theoratical price as origin
+        self.avg_asks_coor = {} #theoratical price as origin
+        self.avg_bid_ct = {}
+        self.avg_ask_ct = {}
+        self.start_trade_tf = {}
+        self.bid_weight = 1
+        self.ask_weight = 1
+        self.bid_step = 0
+        self.ask_step = 0
+
         for product in self.PROD_LIST: # initialize variables
             self.result[product] = []
             self.hist_prices[product] = []
@@ -48,6 +63,16 @@ class Trader:
             self.vol[product] = 0
             self.position[product] = 0
             self.order_depths[product] = OrderDepth
+
+            self.max_avg_bid_ask_spread[product] = 0
+            self.max_avg_bid[product] = 0
+            self.min_avg_ask[product] = 0
+            self.avg_bids_coor[product] = {}
+            self.avg_asks_coor[product] = {}
+            self.avg_bid_ct[product] = 0
+            self.avg_ask_ct[product] = 0
+            self.start_trade_tf[product] = False
+
     def run(self, state: TradingState) -> Dict[str, List[Order]]:
         #try:
             #-----Data update start-----
@@ -63,11 +88,68 @@ class Trader:
                 self.__update_vol_and_price_weighted_by_vol(state, product) # update price of [product]
                 self.__update_mid_price(product)
             #-----Data update end
+                
             #-----Algo start-----
-            print(self.best_ask_price)
-            print(self.best_bid_price)
-            print(self.avg_ask_price)
-            print(self.avg_bid_price)
+            #place order
+            for product in self.PROD_LIST:
+                if self.start_trade_tf[product]:
+                    bid_prices = state.order_depths[product].buy_orders.keys().sort(reverse = True) # descending order
+                    ask_prices = state.order_depths[product].sell_orders.keys().sort() # ascending order
+                    avg_bids_coor = np.fromiter(self.avg_bids_coor[product].keys(), dtype = float)
+                    avg_asks_coor = np.fromiter(self.avg_asks_coor[product].keys(), dtype = float)
+                    avg_bids_coor_ct = np.fromiter(self.avg_bids_coor[product].values(), dtype = float)
+                    avg_asks_coor_ct = np.fromiter(self.avg_asks_coor[product].values(), dtype = float)
+                    remain_bid_size = self.get_max_bid_size(product)
+                    remain_ask_size = self.get_max_ask_size(product)
+                    ask_prob = 0
+                    for ask_price in ask_prices: # bid
+                        if remain_bid_size <= 0:
+                            break
+                        bid_prob = 0
+                        vol_avail = state.order_depths[product].sell_orders[ask_price]
+                        adj_avg_bids_coor = avg_bids_coor - ask_price
+                        numer = np.sum(adj_avg_bids_coor * avg_bids_coor_ct)
+                        denom = self.avg_bid_ct[product]
+                        exp_val = numer/denom if denom > 0 else 0
+                        if exp_val > 0 and self.max_avg_bid_ask_spread[product] > 0:
+                            bid_prob = exp_val / self.max_avg_bid_ask_spread[product]
+                            bid_prob = 1 if bid_prob > 1 else bid_prob
+                            vol_desired = round(remain_bid_size * bid_prob)
+                            bid_vol = min(vol_desired, vol_avail)
+                            remain_bid_size -= bid_vol
+                            self.place_order(product, ask_price, bid_vol)
+                        
+                        
+                        avg_bids_above_bAsk = avg_bids_coor[avg_bids_coor > self.best_ask_price[product]]
+                        avg_asks_below_bBid = avg_asks_coor[avg_asks_coor < self.best_bid_price[product]]
+
+
+            #update dataset
+            #treat theo_p as origin so everything below is negative, above is positive (like coordinatees)
+            for product in self.PROD_LIST:
+                theo_p = self.get_theo_price(product)
+                avg_bid_coor = self.custom_rd(self.avg_bid_price[product] - theo_p)
+                avg_ask_coor = self.custom_rd(self.avg_ask_price[product] - theo_p)
+
+                self.max_avg_bid[product] = self.avg_bid_price[product] if self.avg_bid_price[product] > self.max_avg_bid[product] else self.max_avg_bid[product]
+                self.min_avg_ask[product] = self.avg_ask_price[product] if self.avg_ask_price[product] < self.min_avg_ask[product] else self.min_avg_ask[product]
+                self.max_avg_bid_ask_spread[product] = self.max_avg_bid[product] - self.min_avg_ask[product]
+
+                if avg_bid_coor in self.avg_bids_coor[product].keys():
+                    self.avg_bids_coor[product][avg_bid_coor] += self.bid_weight
+                else:
+                    self.avg_bids_coor[product][avg_bid_coor] = self.bid_weight
+                if avg_ask_coor in self.avg_asks_coor[product].keys():
+                    self.avg_asks_coor[product][avg_ask_coor] += self.ask_weight
+                else:
+                    self.avg_asks_coor[product][avg_ask_coor] = self.ask_weight
+                self.avg_bid_ct[product] += self.bid_weight
+                self.avg_ask_ct[product] += self.ask_weight
+                self.bid_weight += self.bid_step
+                self.ask_weight += self.ask_step
+
+                if self.start_trade_tf[product] == False and self.max_avg_bid_ask_spread[product] > 0:
+                    self.start_trade_tf[product] = True
             #-----Algo end
             return self.result
         #except Exception:
@@ -75,8 +157,14 @@ class Trader:
         #    return self.result
 
     #-----Algo methods start-----
-    def write_methods_for_algo_computations_in_this_section(self):
-        pass
+    def custom_rd(self, num):
+        return round(num*2,1)/2
+    def get_theo_price(self, product):
+        if product == "PEARLS":
+            return self.PEARL_PRICE
+        elif product == "BANANAS":
+            return 0
+
     #-----Algo methods end
 
     #-----Basic methods start-----
@@ -182,7 +270,6 @@ class Trader:
         self.vol[product] = t_vol
         self.hist_vol[product].append(t_vol)
         
-    
     def __update_mid_price(self, product) -> None:
         product_bids = product_asks = {}
         max_bid = min_ask = avg_ask = avg_bid = bid_sum = bid_ct = ask_sum = ask_ct = 0
