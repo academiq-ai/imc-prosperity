@@ -185,7 +185,7 @@ class Trader:
         else:#elif product == "BANANAS":
             #return self.price[product]
             #return st.mean(self.hist_prices[product][-(1+self.BANANA_AVG_INTERVAL):-1]) if len(self.hist_prices[product]) > self.BANANA_AVG_INTERVAL else 0
-            return self.hist_mid_prices[product][-2]
+            return self.hist_mid_prices[product][-2] if len(self.hist_mid_prices[product]) > 1 else 0
         """elif product == "COCONUTS":
             return self.price["PINA_COLADAS"]
         elif product == "PINA_COLADAS":
