@@ -9,10 +9,10 @@ import numpy as np
     expected value of the percentage change of the current interval"""
 
 class Trader:
-    POS_LIMIT: Dict[str, int] = {"PEARLS": 20, "BANANAS": 20} # Dict: {product_name -> pos_limit} NOTE: need to manually update dict of product limits
-    PROD_LIST = ("PEARLS", "BANANAS") # Set: product_names NOTE: need to manually update list of products
-    MAX_LOT_SIZE = 20
-    PATTERN_TRACKING_INTERVAL = 2
+    POS_LIMIT: Dict[str, int] = {"PEARLS": 20, "BANANAS": 20, "COCONUTS": 600, "PINA_COLADAS":300} # Dict: {product_name -> pos_limit} NOTE: need to manually update dict of product limits
+    PROD_LIST = ("PEARLS", "BANANAS", "COCONUTS", "PINA_COLADAS") # Set: product_names NOTE: need to manually update list of products
+    MAX_LOT_SIZE = 1000
+    PATTERN_TRACKING_INTERVAL = 5
     PATTERN_TRACKING_INTERVAL += 1
     PERC_ROUND_DEC = 2
 
@@ -99,13 +99,13 @@ class Trader:
                         certainty = self.certainty_of_expected_val(product, exp_val, cur_price_chg,ct)
                         print(f"certainty: {certainty}")
                         #print(f"cur_price_chg: {self.price_chg_freq[product]}")
-                        if exp_val > 0 and product == "BANANAS":
+                        if exp_val > 0:
                             #best_ask_price = self.get_best_ask(product)
                             vol = self.get_max_bid_size(product)
                             #self.place_order(product, best_ask_price, abs(vol*certainty))
                             #self.place_order(product, self.get_best_bid(product), abs(vol*certainty))
                             self.place_order(product, self.price[product], abs(vol*certainty))
-                        elif exp_val < 0 and product == "BANANAS":
+                        elif exp_val < 0:
                             #best_bid_price = self.get_best_bid(product)
                             vol = self.get_max_ask_size(product)
                             #self.place_order(product, best_bid_price, -abs(vol*certainty))
@@ -183,7 +183,9 @@ class Trader:
                 certainty_expVal_to_avgRet = 0
             elif certainty_expVal_to_avgRet > 1:
                 certainty_expVal_to_avgRet = 1
-        print(f"{product} expVal(avgRet)/ct: {exp_val}%({avgRet}%) {ct}")
+        if product == self.PROD_LIST[-1] or product == self.PROD_LIST[-2]:
+            print(f"{product} expVal(avgRet)/ct: {exp_val}%({avgRet}%) {ct}")
+            print(f"{product} price_chg_freq: {self.price_chg_freq[product]}")
         #return (certainty_expVal_to_avgRet)*certainty_pattern_freq
         num = (certainty_expVal_to_avgRet) if certainty_pattern_freq >= 0.1 else 0
         if num > 1:

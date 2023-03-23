@@ -6,9 +6,9 @@ import numpy as np
 """NOTE: if volume > 0 -> bid; if volume < 0 -> ask"""
 
 class Trader:
-    POS_LIMIT: Dict[str, int] = {"PEARLS": 20, "BANANAS": 20} # Dict: {product_name -> pos_limit} NOTE: need to manually update dict of product limits
-    PROD_LIST = ("BANANAS", "PEARLS") # Set: product_names NOTE: need to manually update list of products
-    MAX_LOT_SIZE = 20 #change back to 10
+    POS_LIMIT: Dict[str, int] = {"PEARLS": 20, "BANANAS": 20, "COCONUTS": 600, "PINA_COLADAS":300} # Dict: {product_name -> pos_limit} NOTE: need to manually update dict of product limits
+    PROD_LIST = ("PEARLS", "BANANAS", "COCONUTS", "PINA_COLADAS") # Set: product_names NOTE: need to manually update list of products
+    MAX_LOT_SIZE = 1000 #change back to 10
     PATTERN_TRACKING_INTERVAL = 3
     NUM_PAT_CLASS = 3
     PATTERN_MAX_INDEX = NUM_PAT_CLASS ** PATTERN_TRACKING_INTERVAL - 1
