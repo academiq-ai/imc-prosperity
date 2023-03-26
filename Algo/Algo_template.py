@@ -64,6 +64,7 @@ class Trader:
                 self.__update_mid_price(product)
             #-----Data update end
             #-----Algo start-----
+            print(state.observations)
             print(self.best_ask_price)
             print(self.best_bid_price)
             print(self.avg_ask_price)
