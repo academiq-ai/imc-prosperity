@@ -161,10 +161,7 @@ class Trader:
                     prob_a = max(0, min(prob_a, 1))
                     prob_b = max(0, min(prob_b, 1))
 
-                    if (
-                        product != "PEARLS"
-                        and self.coor_data_refresh_ct[product] >= self.REFRESH_CT
-                    ):
+                    if product != "PEARLS":
                         self.start_trade_tf[product] = False
                         self.coor_data_refresh_ct[product] = 0
                         self.max_trade_coor[product] = 0
@@ -177,47 +174,32 @@ class Trader:
                 and self.price != 0
                 and len(self.trade_coors[product]) > 1
             ):
-                bid_price, ask_price = self.get_optimal_bid_ask_price(product, theo_p)
-                spread = ask_price - bid_price
-                # certainty = spread / self.max_trade_spread[product] if self.max_trade_spread[product] > 0 else 0(self.trade_coors[product][bid_price-theo_p])*(self.trade_coors[product][ask_price-theo_p])/self.t_trade_vol[product]**2 if self.t_trade_vol[product] > 0 else 0#spread / self.max_trade_spread[product] if self.max_trade_spread[product] > 0 else 0
-                prob_b = (
-                    self.trade_coors[product][bid_price - theo_p]
-                    / self.t_trade_vol[product]
-                    if self.t_trade_vol[product] > 0
-                    else 0
-                )
-                prob_a = (
-                    self.trade_coors[product][ask_price - theo_p]
-                    / self.t_trade_vol[product]
-                    if self.t_trade_vol[product] > 0
-                    else 0
-                )
-                certainty = (
-                    prob_b * prob_a * (1 / prob_b + 1 / prob_a)
-                    if prob_b and prob_a > 0
-                    else 0
-                )
+                trade_vol = self.t_trade_vol[product]
+                if trade_vol > 0:
+                    bid_price, ask_price = self.get_optimal_bid_ask_price(
+                        product, theo_p
+                    )
+                    bid_trade_vol = self.trade_coors[product].get(bid_price - theo_p, 0)
+                    ask_trade_vol = self.trade_coors[product].get(ask_price - theo_p, 0)
+                    prob_b = bid_trade_vol / trade_vol
+                    prob_a = ask_trade_vol / trade_vol
+                    certainty = (
+                        prob_b * prob_a * (1 / prob_b + 1 / prob_a)
+                        if prob_b and prob_a
+                        else 0
+                    )
+                else:
+                    prob_b, prob_a, certainty = 0, 0, 0
+
+                prob_a = min(max(prob_a, 0), 1)
+                prob_b = min(max(prob_b, 0), 1)
+                certainty = min(max(certainty, 0), 1)
+
                 remain_bid_size = self.get_max_bid_size(product)
                 remain_ask_size = self.get_max_ask_size(product)
-                if certainty > 1:
-                    certainty = 1
-                elif certainty < 0:
-                    certainty = 0
-                if prob_a > 1:
-                    prob_a = 1
-                elif prob_a < 0:
-                    prob_a = 0
-                if prob_b > 1:
-                    prob_b = 1
-                elif prob_b < 0:
-                    prob_b = 0
-                # self.place_order(product, bid_price, certainty*abs(remain_bid_size))
-                # self.place_order(product, ask_price, -certainty*abs(remain_ask_size))
                 self.place_order(product, bid_price, prob_a * abs(remain_bid_size))
                 self.place_order(product, ask_price, -prob_b * abs(remain_ask_size))
-                # self.coor_data_refresh_ct[product] += 1
 
-            # print("{product} self.coor_data_refresh_ct[product]")
         # update dataset
         # treat theo_p as origin so everything below is negative, above is positive (like coordinatees)
         for product in self.PROD_LIST:
